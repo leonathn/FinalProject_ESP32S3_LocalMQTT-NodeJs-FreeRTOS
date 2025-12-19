@@ -96,13 +96,9 @@
       </div>
 
       <!-- MQTT Broker Info & Topics -->
-      <div class="grid grid-2">
+      <div class="grid grid-2" style="margin-bottom: var(--spacing-lg);">
         <div class="card">
-          <div class="card-header">
-            <div>
-              <h2 class="card-title">🔌 MQTT Broker Information</h2>
-            </div>
-          </div>
+          <h3 class="card-title" style="margin-bottom: var(--spacing-md);">🔌 MQTT Broker Information</h3>
           
           <div style="background: var(--input-bg); border-radius: var(--radius-md); padding: var(--spacing-md); font-family: 'Courier New', monospace; font-size: 0.875rem;">
             <div style="margin-bottom: 1rem;">
@@ -125,35 +121,33 @@
         </div>
 
         <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">📡 Available Topics</h2>
-          </div>
+          <h3 class="card-title" style="margin-bottom: var(--spacing-md);">📡 Available Topics</h3>
           
-          <div style="margin-bottom: 1.5rem;">
-            <div style="font-weight: 600; color: var(--success); margin-bottom: 0.5rem;">Subscribe:</div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+          <div style="margin-bottom: 1rem;">
+            <div style="font-weight: 600; color: var(--success); margin-bottom: 0.375rem; font-size: 0.875rem;">Subscribe:</div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
               <span style="color: var(--primary);">devices/+/status</span>
             </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
               <span style="color: var(--primary);">devices/+/telemetry</span>
             </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
               <span style="color: var(--primary);">devices/+/diagnostics</span>
             </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
               <span style="color: var(--primary);">gestures/detected</span>
             </div>
           </div>
           
           <div>
-            <div style="font-weight: 600; color: var(--warning); margin-bottom: 0.5rem;">Publish (Control):</div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+            <div style="font-weight: 600; color: var(--warning); margin-bottom: 0.375rem; font-size: 0.875rem;">Publish (Control):</div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
               <span style="color: var(--warning);">device/{id}/gpio/set</span>
             </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
               <span style="color: var(--warning);">device/{id}/pwm</span>
             </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
               <span style="color: var(--warning);">device/{id}/config</span>
             </div>
           </div>
@@ -161,37 +155,37 @@
       </div>
 
       <!-- Connected Devices -->
-      <div class="card mt-lg">
+      <div class="card">
         <div class="card-header">
-          <h2 class="card-title">📱 Connected Devices</h2>
+          <h3 class="card-title">📱 Connected Devices</h3>
           <button class="btn btn-secondary btn-sm" onclick="refreshDevices()">
             🔄 Refresh
           </button>
         </div>
-        <div id="dashboardDeviceGrid" class="grid grid-2"></div>
+        <div id="dashboardDeviceGrid" class="grid grid-auto"></div>
       </div>
       
     </div>
 
     <!-- Device Fleet Page -->
     <div id="devicesPage" class="page">
-      <div class="flex-between mb-lg">
-        <div>
-          <h2 style="color: var(--primary); margin: 0 0 0.5rem 0; font-size: 1.75rem;">Device Fleet Management</h2>
-          <p class="text-muted">Monitor and control all ESP32 devices</p>
+      <div class="flex-between" style="margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-sm);">
+        <div style="flex: 1; min-width: 200px;">
+          <h2 style="color: var(--primary); margin: 0; font-size: 1.25rem;">Device Fleet</h2>
+          <p class="text-muted" style="margin: 0.125rem 0 0 0; font-size: 0.75rem;">Monitor and control all ESP32 devices</p>
         </div>
-        <div class="search-box" style="width: 300px;">
+        <div class="search-box">
           <span class="search-icon">🔍</span>
           <input type="text" class="search-input" placeholder="Search devices..." id="deviceSearch">
         </div>
       </div>
       
-      <div id="deviceGrid" class="grid grid-2"></div>
+      <div id="deviceGrid" class="grid grid-auto"></div>
     </div>
 
     <!-- Gesture Control Page -->
     <div id="gesturesPage" class="page">
-      <h2 style="color: var(--primary); margin-bottom: 1.5rem; font-size: 1.75rem;">Hand Gesture Recognition</h2>
+      <h2 style="color: var(--primary); margin-bottom: var(--spacing-md); font-size: 1.25rem;">Hand Gesture Recognition</h2>
       
       <div class="grid grid-2">
         <div class="card">
@@ -214,31 +208,31 @@
         
         <div class="card">
           <h3 class="card-title">✋ Hand Gesture Controls</h3>
-          <div class="gesture-grid mb-lg">
+          <div class="gesture-grid" style="margin-bottom: var(--spacing-md);">
             <div class="gesture-card">
               <div class="gesture-icon">✋</div>
-              <div class="gesture-name">Palm Open</div>
-              <div class="gesture-confidence">All fingers open</div>
+              <div class="gesture-name">Palm</div>
+              <div class="gesture-confidence text-xs">All fingers open</div>
             </div>
             <div class="gesture-card">
               <div class="gesture-icon">✊</div>
               <div class="gesture-name">Fist</div>
-              <div class="gesture-confidence">All fingers closed</div>
+              <div class="gesture-confidence text-xs">All closed</div>
             </div>
             <div class="gesture-card">
               <div class="gesture-icon">👍</div>
               <div class="gesture-name">Thumbs Up</div>
-              <div class="gesture-confidence">Approve</div>
+              <div class="gesture-confidence text-xs">Approve</div>
             </div>
             <div class="gesture-card">
               <div class="gesture-icon">☝️</div>
               <div class="gesture-name">Point Up</div>
-              <div class="gesture-confidence">One finger</div>
+              <div class="gesture-confidence text-xs">One finger</div>
             </div>
             <div class="gesture-card">
               <div class="gesture-icon">✌️</div>
               <div class="gesture-name">Victory</div>
-              <div class="gesture-confidence">Two fingers</div>
+              <div class="gesture-confidence text-xs">Two fingers</div>
             </div>
           </div>
           
@@ -269,13 +263,13 @@
 
     <!-- Automation Page -->
     <div id="automationPage" class="page">
-      <h2 style="color: var(--primary); margin-bottom: 1.5rem; font-size: 1.75rem;">Automation Rules</h2>
+      <h2 style="color: var(--primary); margin-bottom: var(--spacing-md); font-size: 1.25rem;">Automation Rules</h2>
       
-      <div class="card mb-lg">
+      <div class="card" style="margin-bottom: var(--spacing-lg);">
         <div class="card-header">
           <h3 class="card-title">Add New Automation Rule</h3>
           <button class="btn btn-secondary btn-sm" id="hideFormBtn" onclick="document.getElementById('automationFormCard').style.display='none'">
-            ➖ Hide Form
+            ➖ Hide
           </button>
         </div>
         
@@ -295,7 +289,7 @@
               </div>
             </div>
             
-            <h4 style="color: var(--primary); margin: 1.5rem 0 1rem 0;">Trigger Condition</h4>
+            <h4 style="color: var(--primary); margin: var(--spacing-md) 0 var(--spacing-sm) 0; font-size: 1rem;">Trigger Condition</h4>
             <div class="grid grid-4">
               <div class="form-group">
                 <label class="form-label">Trigger Type *</label>
@@ -325,7 +319,7 @@
               </div>
             </div>
             
-            <h4 style="color: var(--primary); margin: 1.5rem 0 1rem 0;">Action</h4>
+            <h4 style="color: var(--primary); margin: var(--spacing-md) 0 var(--spacing-sm) 0; font-size: 1rem;">Action</h4>
             <div class="grid grid-4">
               <div class="form-group">
                 <label class="form-label">Action Type *</label>
@@ -377,10 +371,10 @@
 
     <!-- Event Logs Page -->
     <div id="eventsPage" class="page">
-      <div class="flex-between mb-lg">
+      <div class="flex-between" style="margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-sm);">
         <div>
-          <h2 style="color: var(--primary); margin: 0 0 0.5rem 0; font-size: 1.75rem;">Event Logs</h2>
-          <p class="text-muted">System activity and device events</p>
+          <h2 style="color: var(--primary); margin: 0; font-size: 1.25rem;">Event Logs</h2>
+          <p class="text-muted" style="margin: 0.125rem 0 0 0; font-size: 0.75rem;">System activity and device events</p>
         </div>
         <div class="flex gap-sm">
           <button class="btn btn-secondary" id="exportEventsBtn">
@@ -399,7 +393,7 @@
 
     <!-- MQTT Documentation Page -->
     <div id="docsPage" class="page">
-      <h2 style="color: var(--primary); margin-bottom: 1.5rem; font-size: 1.75rem;">MQTT Broker Documentation</h2>
+      <h2 style="color: var(--primary); margin-bottom: var(--spacing-md); font-size: 1.25rem;">MQTT Documentation</h2>
       
       <div class="card mb-lg">
         <h3 class="card-title">Connection Details</h3>
@@ -680,12 +674,12 @@ client.loop_forever()</pre>
                 <div class="telemetry-item">
                   <div class="telemetry-icon">🌡️</div>
                   <div class="telemetry-label">Temp</div>
-                  <div class="telemetry-value">${telemetry.tC}°C</div>
+                  <div class="telemetry-value">${parseFloat(telemetry.tC).toFixed(1)}°C</div>
                 </div>
                 <div class="telemetry-item">
                   <div class="telemetry-icon">💧</div>
                   <div class="telemetry-label">Humidity</div>
-                  <div class="telemetry-value">${telemetry.rh}%</div>
+                  <div class="telemetry-value">${parseFloat(telemetry.rh).toFixed(1)}%</div>
                 </div>
               </div>
             ` : ''}

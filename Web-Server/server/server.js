@@ -4,7 +4,7 @@
  */
 
 const express = require('express');
-const http = require('server');
+const http = require('http');
 const aedes = require('aedes')();
 const { Server: WebSocketServer } = require('ws');
 const path = require('path');

@@ -105,12 +105,12 @@ function renderDeviceGrid() {
             <div class="telemetry-item">
               <div class="telemetry-icon">🌡️</div>
               <div class="telemetry-label">Temp</div>
-              <div class="telemetry-value">${telemetry.tC}°C</div>
+              <div class="telemetry-value">${parseFloat(telemetry.tC).toFixed(1)}°C</div>
             </div>
             <div class="telemetry-item">
               <div class="telemetry-icon">💧</div>
               <div class="telemetry-label">Humidity</div>
-              <div class="telemetry-value">${telemetry.rh}%</div>
+              <div class="telemetry-value">${parseFloat(telemetry.rh).toFixed(1)}%</div>
             </div>
           </div>
         ` : ''}
