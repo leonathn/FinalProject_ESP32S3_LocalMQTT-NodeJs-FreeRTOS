@@ -31,6 +31,7 @@ void TaskActuator(void *pvParameters) {
   for (;;) {
     // Check for commands in queue
     if (xQueueReceive(commandQueue, &command, pdMS_TO_TICKS(100)) == pdTRUE) {
+      Serial.println("[Actuator] ========================================");
       Serial.println("[Actuator] Received command: " + command);
       
       // Parse JSON command
@@ -38,24 +39,30 @@ void TaskActuator(void *pvParameters) {
       DeserializationError error = deserializeJson(doc, command);
       
       if (error) {
-        Serial.println("[Actuator] Failed to parse command JSON");
+        Serial.println("[Actuator] ✗ Failed to parse JSON: " + String(error.c_str()));
         continue;
       }
+      Serial.println("[Actuator] ✓ JSON parsed successfully");
       
       const char* type = doc["type"];
+      Serial.println("[Actuator] Command type: " + String(type));
       
       if (strcmp(type, "gpio") == 0 || strcmp(type, "relay") == 0) {
         // GPIO ON/OFF command: {"type":"gpio", "pin":1, "state":true}
         int pin = doc["pin"];  // 1-8
         bool state = doc["state"];
         
+        Serial.println("[Actuator] GPIO pin: " + String(pin) + ", state: " + String(state));
+        
         if (pin >= 1 && pin <= 8) {
           int idx = pin - 1;
-          digitalWrite(gpioOutputPins[idx], state ? HIGH : LOW);
+          uint8_t physicalPin = gpioOutputPins[idx];
+          Serial.println("[GPIO] Setting physical pin " + String(physicalPin) + " to " + String(state ? "HIGH" : "LOW"));
+          digitalWrite(physicalPin, state ? HIGH : LOW);
           gpioStates[idx] = state;
-          Serial.println("[GPIO" + String(pin) + "] Pin " + String(gpioOutputPins[idx]) + " -> " + String(state ? "ON" : "OFF"));
+          Serial.println("[GPIO" + String(pin) + "] ✓ Pin " + String(physicalPin) + " -> " + String(state ? "ON" : "OFF"));
         } else {
-          Serial.println("[Actuator] Invalid GPIO pin: " + String(pin));
+          Serial.println("[Actuator] ✗ Invalid GPIO pin: " + String(pin) + " (must be 1-8)");
         }
       }
       else if (strcmp(type, "neopixel") == 0 || strcmp(type, "led") == 0) {

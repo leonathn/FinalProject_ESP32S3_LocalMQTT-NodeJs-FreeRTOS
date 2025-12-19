@@ -10,7 +10,7 @@
 
 void startAPMode() {
   apMode = true;
-  String apSSID = AP_SSID_PREFIX + deviceId;
+  String apSSID = deviceId;  // deviceId already contains full name
   
   WiFi.mode(WIFI_AP);
   WiFi.softAP(apSSID.c_str(), AP_PASSWORD);

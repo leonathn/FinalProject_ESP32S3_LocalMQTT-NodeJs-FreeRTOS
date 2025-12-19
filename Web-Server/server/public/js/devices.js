@@ -6,12 +6,35 @@
 const devices = new Map();
 const DEVICE_TIMEOUT = 60000;
 
+// Normalize device ID to prevent duplicates from different formats
+function normalizeDeviceId(deviceId) {
+  const upper = deviceId.toUpperCase();
+  
+  // Extract device type (ACTUATOR or SENSOR)
+  const type = upper.includes('ACTUATOR') ? 'ACTUATOR' : 'SENSOR';
+  
+  // Extract last 4 characters (usually the unique ID like 4E5C or 731C)
+  const match = upper.match(/([A-F0-9]{4})$/i);
+  const suffix = match ? match[1] : upper.slice(-4);
+  
+  return `${type}-${suffix}`;
+}
+
 function handleDeviceMessage(deviceId, telemetry) {
-  if (!devices.has(deviceId)) {
-    registerNewDevice(deviceId, telemetry);
+  // Normalize device ID to prevent duplicates
+  const normalizedId = normalizeDeviceId(deviceId);
+  
+  if (!devices.has(normalizedId)) {
+    registerNewDevice(deviceId, normalizedId, telemetry);
+  } else {
+    // Update existing device - make sure originalId is preserved
+    const device = devices.get(normalizedId);
+    if (!device.originalId) {
+      device.originalId = deviceId;
+    }
   }
   
-  const device = devices.get(deviceId);
+  const device = devices.get(normalizedId);
   device.telemetry = telemetry || {};
   device.lastSeen = Date.now();
   device.online = true;
@@ -19,19 +42,22 @@ function handleDeviceMessage(deviceId, telemetry) {
   updateDashboard();
   
   if (telemetry && telemetry.tC !== undefined) {
-    addEvent('info', `Telemetry: ${deviceId}`, {
+    addEvent('info', `Telemetry: ${device.name}`, {
       temp: `${telemetry.tC}°C`,
       humidity: `${telemetry.rh}%`
     });
   }
 }
 
-function registerNewDevice(deviceId, telemetry) {
-  const deviceType = deviceId.includes('ACTUATOR') ? 'actuator' : 'sensor';
+function registerNewDevice(originalId, normalizedId, telemetry) {
+  // Improved device type detection
+  const idLower = originalId.toLowerCase();
+  const deviceType = idLower.includes('actuator') ? 'actuator' : 'sensor';
   
   const device = {
-    id: deviceId,
-    name: deviceId.replace('ESP32-IOT-', ''),
+    id: normalizedId,
+    originalId: originalId,  // Keep full original ID for MQTT
+    name: originalId.replace('ESP32-IOT-', '').replace('ESP32S3-', ''),
     type: deviceType,
     telemetry: telemetry,
     online: true,
@@ -39,8 +65,8 @@ function registerNewDevice(deviceId, telemetry) {
     lastSeen: Date.now()
   };
   
-  devices.set(deviceId, device);
-  addEvent('success', `New ${deviceType} connected: ${deviceId}`, { type: deviceType });
+  devices.set(normalizedId, device);
+  addEvent('success', `New ${deviceType} connected: ${originalId}`, { type: deviceType });
 }
 
 function updateDashboard() {
@@ -87,9 +113,10 @@ function renderDeviceGrid() {
   grid.innerHTML = deviceArray.map(device => {
     const isOnline = device.online;
     const telemetry = device.telemetry || {};
+    const cardClass = device.type === 'actuator' ? 'device-card device-card-wide' : 'device-card';
     
     return `
-      <div class="device-card">
+      <div class="${cardClass}">
         <div class="device-header">
           <div class="device-info">
             <h3>${device.name}</h3>
@@ -117,15 +144,22 @@ function renderDeviceGrid() {
         
         ${device.type === 'actuator' ? `
           <div class="gpio-grid">
-            ${[1, 2, 3, 4, 5, 6, 7, 8].map(gpio => `
+            ${[1, 2, 3, 4, 5, 6, 7, 8].map(gpio => {
+              const pinMap = {1:5, 2:6, 3:7, 4:8, 5:9, 6:10, 7:21, 8:38};
+              const boardLabel = `D${gpio + 1}`;
+              const isOn = device.gpioStates && device.gpioStates[gpio];
+              
+              return `
               <div class="gpio-item">
-                <div class="gpio-label">GPIO ${gpio}</div>
-                <div class="gpio-buttons">
-                  <button class="gpio-btn on" onclick="controlGPIO('${device.id}', ${gpio}, 1)">ON</button>
-                  <button class="gpio-btn off" onclick="controlGPIO('${device.id}', ${gpio}, 0)">OFF</button>
-                </div>
+                <span class="gpio-label">${boardLabel}</span>
+                <label class="gpio-switch">
+                  <input type="checkbox" ${isOn ? 'checked' : ''} 
+                         onchange="controlGPIO('${device.id}', ${gpio}, this.checked ? 1 : 0)">
+                  <span class="gpio-slider"></span>
+                </label>
               </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         ` : ''}
         
@@ -138,20 +172,25 @@ function renderDeviceGrid() {
   }).join('');
 }
 
-function controlGPIO(deviceId, gpio, state) {
-  const device = devices.get(deviceId);
+function controlGPIO(normalizedId, gpio, state) {
+  const device = devices.get(normalizedId);
   
   if (!device) {
-    addEvent('error', `Device not found: ${deviceId}`);
+    addEvent('error', `Device not found: ${normalizedId}`);
     return;
   }
   
   if (!device.online) {
-    addEvent('warning', `Device offline: ${deviceId}`);
+    addEvent('warning', `Device offline: ${device.name}`);
     return;
   }
   
-  const topic = `device/${deviceId}/gpio/set`;
+  // Update local state
+  if (!device.gpioStates) device.gpioStates = {};
+  device.gpioStates[gpio] = state === 1;
+  
+  // Use the original full device ID for MQTT topic
+  const topic = `device/${device.originalId || device.name}/gpio/set`;
   const payload = {
     type: "gpio",
     pin: parseInt(gpio),
@@ -160,6 +199,7 @@ function controlGPIO(deviceId, gpio, state) {
   
   if (publishMQTT(topic, payload)) {
     addEvent('success', `GPIO ${gpio} → ${state ? 'ON' : 'OFF'} on ${device.name}`);
+    updateDashboard();
   }
 }
 

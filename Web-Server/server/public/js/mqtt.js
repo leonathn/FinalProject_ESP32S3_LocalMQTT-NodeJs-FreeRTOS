@@ -64,9 +64,10 @@ function onMQTTMessage(topic, message) {
         const data = JSON.parse(payload);
         handleDeviceMessage(deviceId, data);
       } catch {
-        // If not JSON, just register the device
-        if (!devices.has(deviceId)) {
-          registerNewDevice(deviceId, {});
+        // If not JSON, just register the device with normalizeDeviceId
+        const normalizedId = normalizeDeviceId(deviceId);
+        if (!devices.has(normalizedId)) {
+          registerNewDevice(deviceId, normalizedId, {});
         }
         addEvent('info', `Device status update: ${deviceId}`, { status: payload });
       }

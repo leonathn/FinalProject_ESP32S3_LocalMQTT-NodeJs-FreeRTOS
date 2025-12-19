@@ -38,14 +38,15 @@ void connectMQTT() {
   }
 }
 
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
+void mqttCallback(char* topic, uint8_t* payload, unsigned int length) {
   String topicStr = String(topic);
   String payloadStr;
   for (unsigned int i = 0; i < length; i++) {
     payloadStr += (char)payload[i];
   }
   
-  Serial.println("[MQTT] " + topicStr + ": " + payloadStr);
+  Serial.println("[MQTT] Topic: " + topicStr);
+  Serial.println("[MQTT] Payload: " + payloadStr);
   
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, payloadStr);
@@ -56,11 +57,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   
   // Handle GPIO control commands
   if (topicStr.endsWith("/gpio/set")) {
+    Serial.println("[MQTT] GPIO control command received");
     // Forward GPIO command to actuator task
     if (commandQueue != NULL) {
       String command = payloadStr;
-      xQueueSend(commandQueue, &command, pdMS_TO_TICKS(100));
-      Serial.println("[MQTT] GPIO command queued");
+      BaseType_t result = xQueueSend(commandQueue, &command, pdMS_TO_TICKS(100));
+      if (result == pdTRUE) {
+        Serial.println("[MQTT] ✓ GPIO command queued successfully");
+      } else {
+        Serial.println("[MQTT] ✗ Failed to queue GPIO command (queue full?)");
+      }
+    } else {
+      Serial.println("[MQTT] ✗ Command queue is NULL!");
     }
   }
   // Handle general commands
