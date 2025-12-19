@@ -12,13 +12,13 @@ function handleDeviceMessage(deviceId, telemetry) {
   }
   
   const device = devices.get(deviceId);
-  device.telemetry = telemetry;
+  device.telemetry = telemetry || {};
   device.lastSeen = Date.now();
   device.online = true;
   
   updateDashboard();
   
-  if (telemetry.tC !== undefined) {
+  if (telemetry && telemetry.tC !== undefined) {
     addEvent('info', `Telemetry: ${deviceId}`, {
       temp: `${telemetry.tC}°C`,
       humidity: `${telemetry.rh}%`
@@ -152,7 +152,11 @@ function controlGPIO(deviceId, gpio, state) {
   }
   
   const topic = `device/${deviceId}/gpio/set`;
-  const payload = { gpio: parseInt(gpio), state: parseInt(state) };
+  const payload = {
+    type: "gpio",
+    pin: parseInt(gpio),
+    state: state === 1 ? true : false
+  };
   
   if (publishMQTT(topic, payload)) {
     addEvent('success', `GPIO ${gpio} → ${state ? 'ON' : 'OFF'} on ${device.name}`);

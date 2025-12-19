@@ -99,6 +99,26 @@ app.get('/api/devices', (req, res) => {
   });
 });
 
+app.get('/api/server-ip', (req, res) => {
+  const os = require('os');
+  const networkInterfaces = os.networkInterfaces();
+  let serverIP = 'localhost';
+  
+  // Find the first non-internal IPv4 address
+  for (const interfaceName in networkInterfaces) {
+    const addresses = networkInterfaces[interfaceName];
+    for (const addr of addresses) {
+      if (addr.family === 'IPv4' && !addr.internal) {
+        serverIP = addr.address;
+        break;
+      }
+    }
+    if (serverIP !== 'localhost') break;
+  }
+  
+  res.json({ ip: serverIP });
+});
+
 app.post('/api/gpio/control', (req, res) => {
   const { deviceId, gpio, state } = req.body;
   

@@ -27,10 +27,6 @@ void connectMQTT() {
   // Require WiFi connection and MQTT server configured
   if (!wifiConnected || mqttServer.length() == 0) return;
   
-void connectMQTT() {
-  // Require WiFi connection and MQTT server configured
-  if (!wifiConnected || mqttServer.length() == 0) return;
-  
   // Configure MQTT client
   mqttClient.setServer(mqttServer.c_str(), mqttPort);
   mqttClient.setCallback(mqttCallback);  // Set message handler
@@ -112,13 +108,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
  * Retained messages are delivered to new subscribers immediately.
  * Topic: devices/<device_id>/status
  */
-/**
- * @brief Publish device online status
- * 
- * Publishes retained status message with device information.
- * Retained messages are delivered to new subscribers immediately.
- * Topic: devices/<device_id>/status
- */
 void publishStatus() {
   if (!mqttConnected) return;
   
@@ -170,13 +159,6 @@ bool publishTelemetry(TelemetryData &data) {
   return published;
 }
 
-/**
- * @brief Publish device pairing token
- * 
- * Sends pairing token for server-side device registration/approval.
- * Server can use this to authenticate device during first connection.
- * Topic: devices/<device_id>/pair
- */
 /**
  * @brief Publish device pairing token
  * 

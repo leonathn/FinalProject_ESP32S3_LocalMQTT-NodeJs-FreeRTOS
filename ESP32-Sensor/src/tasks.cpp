@@ -33,7 +33,6 @@
  * Pinned to Core 0, Priority 1
  */
 void TaskSensors(void *pvParameters) {
-void TaskSensors(void *pvParameters) {
   const TickType_t xDelay = pdMS_TO_TICKS(1000);  // 1-second read interval
   
   Serial.println("[Sensors] Task started - Initializing DHT20...");
@@ -123,15 +122,6 @@ void TaskSensors(void *pvParameters) {
   }
 }
 
-/**
- * @brief User interface update task (FreeRTOS)
- * @param pvParameters Unused FreeRTOS parameter
- * 
- * Updates NeoPixel LED color based on system connection state.
- * Provides visual feedback to user every 500ms.
- * 
- * Pinned to Core 0, Priority 1
- */
 /**
  * @brief User interface update task (FreeRTOS)
  * @param pvParameters Unused FreeRTOS parameter

@@ -19,13 +19,6 @@
  * Starts DNS server for captive portal to redirect all requests to web interface.
  * Updates global state and LED indicator.
  */
-/**
- * @brief Start WiFi Access Point mode for device configuration
- * 
- * Creates a WiFi hotspot with SSID based on device ID and fixed password.
- * Starts DNS server for captive portal to redirect all requests to web interface.
- * Updates global state and LED indicator.
- */
 void startAPMode() {
   apMode = true;  // Set global flag for AP mode
   String apSSID = deviceId;  // Use device ID as hotspot name
@@ -53,13 +46,6 @@ void startAPMode() {
  * Switches device to WiFi client mode and initiates connection
  * to the configured network.
  */
-
-/**
- * @brief Start WiFi Station mode
- * 
- * Switches device to WiFi client mode and initiates connection
- * to the configured network.
- */
 void startSTAMode() {
   apMode = false;  // Clear AP mode flag
   WiFi.mode(WIFI_STA);  // Set WiFi to station mode
@@ -75,10 +61,6 @@ void startSTAMode() {
  * 3. On success: Sets event bits, starts mDNS, initiates MQTT
  * 4. On failure: Falls back to AP mode for reconfiguration
  */
-void connectWiFi() {
-  // Skip if no WiFi credentials configured
-  if (wifiSSID.length() == 0) return;
-  
 void connectWiFi() {
   // Skip if no WiFi credentials configured
   if (wifiSSID.length() == 0) return;

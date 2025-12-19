@@ -35,6 +35,10 @@
             <span class="status-dot"></span>
             Connecting...
           </div>
+          <div class="status-indicator" id="brokerIpDisplay">
+            <span class="icon">🌐</span>
+            <span id="brokerIp">Loading...</span>
+          </div>
           <div class="status-indicator">
             <span class="icon">📱</span>
             <span id="deviceCount">2</span> Devices
@@ -95,65 +99,6 @@
         </div>
       </div>
 
-      <!-- MQTT Broker Info & Topics -->
-      <div class="grid grid-2" style="margin-bottom: var(--spacing-lg);">
-        <div class="card">
-          <h3 class="card-title" style="margin-bottom: var(--spacing-md);">🔌 MQTT Broker Information</h3>
-          
-          <div style="background: var(--input-bg); border-radius: var(--radius-md); padding: var(--spacing-md); font-family: 'Courier New', monospace; font-size: 0.875rem;">
-            <div style="margin-bottom: 1rem;">
-              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">TCP Connection:</div>
-              <div style="color: var(--primary);">mqtt://localhost:1883</div>
-            </div>
-            <div style="margin-bottom: 1rem;">
-              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">WebSocket Connection:</div>
-              <div style="color: var(--primary);">ws://localhost:3000/mqtt</div>
-            </div>
-            <div style="margin-bottom: 1rem;">
-              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">Client ID:</div>
-              <div style="color: var(--text-secondary);">Auto-generated</div>
-            </div>
-            <div>
-              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">QoS Level:</div>
-              <div style="color: var(--text-secondary);">0, 1, 2 supported</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="card-title" style="margin-bottom: var(--spacing-md);">📡 Available Topics</h3>
-          
-          <div style="margin-bottom: 1rem;">
-            <div style="font-weight: 600; color: var(--success); margin-bottom: 0.375rem; font-size: 0.875rem;">Subscribe:</div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
-              <span style="color: var(--primary);">devices/+/status</span>
-            </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
-              <span style="color: var(--primary);">devices/+/telemetry</span>
-            </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
-              <span style="color: var(--primary);">devices/+/diagnostics</span>
-            </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
-              <span style="color: var(--primary);">gestures/detected</span>
-            </div>
-          </div>
-          
-          <div>
-            <div style="font-weight: 600; color: var(--warning); margin-bottom: 0.375rem; font-size: 0.875rem;">Publish (Control):</div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
-              <span style="color: var(--warning);">device/{id}/gpio/set</span>
-            </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.375rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
-              <span style="color: var(--warning);">device/{id}/pwm</span>
-            </div>
-            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 0.5rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
-              <span style="color: var(--warning);">device/{id}/config</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Connected Devices -->
       <div class="card">
         <div class="card-header">
@@ -188,11 +133,12 @@
       <h2 style="color: var(--primary); margin-bottom: var(--spacing-md); font-size: 1.25rem;">Hand Gesture Recognition</h2>
       
       <div class="grid grid-2">
+        <!-- Camera Feed -->
         <div class="card">
           <h3 class="card-title">📹 Camera Feed</h3>
           <div class="video-container">
             <video id="gestureVideo" style="display: none;"></video>
-            <canvas id="gestureCanvas" width="640" height="480"></canvas>
+            <canvas id="gestureCanvas" width="640" height="480" style="display: none;"></canvas>
             <div class="camera-placeholder">
               <div class="camera-icon">📷</div>
               <div>Camera Not Active</div>
@@ -206,57 +152,126 @@
           </div>
         </div>
         
-        <div class="card">
-          <h3 class="card-title">✋ Hand Gesture Controls</h3>
-          <div class="gesture-grid" style="margin-bottom: var(--spacing-md);">
-            <div class="gesture-card">
-              <div class="gesture-icon">✋</div>
-              <div class="gesture-name">Palm</div>
-              <div class="gesture-confidence text-xs">All fingers open</div>
+        <!-- Right Column: Controls and Result -->
+        <div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+          <!-- Hand Gesture Controls -->
+          <div class="card">
+            <h3 class="card-title">✋ Hand Gesture Controls</h3>
+            <div class="gesture-grid" style="margin-bottom: var(--spacing-md);">
+              <div class="gesture-card">
+                <div class="gesture-icon">✋</div>
+                <div class="gesture-name">Palm</div>
+                <div class="gesture-confidence text-xs">All fingers open</div>
+              </div>
+              <div class="gesture-card">
+                <div class="gesture-icon">✊</div>
+                <div class="gesture-name">Fist</div>
+                <div class="gesture-confidence text-xs">All closed</div>
+              </div>
+              <div class="gesture-card">
+                <div class="gesture-icon">👍</div>
+                <div class="gesture-name">Thumbs Up</div>
+                <div class="gesture-confidence text-xs">Approve</div>
+              </div>
+              <div class="gesture-card">
+                <div class="gesture-icon">☝️</div>
+                <div class="gesture-name">Point Up</div>
+                <div class="gesture-confidence text-xs">One finger</div>
+              </div>
+              <div class="gesture-card">
+                <div class="gesture-icon">✌️</div>
+                <div class="gesture-name">Victory</div>
+                <div class="gesture-confidence text-xs">Two fingers</div>
+              </div>
             </div>
-            <div class="gesture-card">
-              <div class="gesture-icon">✊</div>
-              <div class="gesture-name">Fist</div>
-              <div class="gesture-confidence text-xs">All closed</div>
-            </div>
-            <div class="gesture-card">
-              <div class="gesture-icon">👍</div>
-              <div class="gesture-name">Thumbs Up</div>
-              <div class="gesture-confidence text-xs">Approve</div>
-            </div>
-            <div class="gesture-card">
-              <div class="gesture-icon">☝️</div>
-              <div class="gesture-name">Point Up</div>
-              <div class="gesture-confidence text-xs">One finger</div>
-            </div>
-            <div class="gesture-card">
-              <div class="gesture-icon">✌️</div>
-              <div class="gesture-name">Victory</div>
-              <div class="gesture-confidence text-xs">Two fingers</div>
+            
+            <div class="info-box">
+              <div class="info-box-title">💡 Tips</div>
+              <div class="info-box-content">
+                <ul>
+                  <li>Hold gesture for 1 second</li>
+                  <li>Keep hand centered in frame</li>
+                  <li>Ensure good lighting conditions</li>
+                  <li>2-second cooldown between triggers</li>
+                </ul>
+              </div>
             </div>
           </div>
           
-          <div class="info-box">
-            <div class="info-box-title">💡 Tips</div>
-            <div class="info-box-content">
-              <ul>
-                <li>Hold gesture for 1 second</li>
-                <li>Keep hand centered in frame</li>
-                <li>Ensure good lighting conditions</li>
-                <li>2-second cooldown between triggers</li>
-              </ul>
+          <!-- Gesture Detection Result -->
+          <div class="card" id="gestureResultCard">
+            <h3 class="card-title">🎯 Detection Result</h3>
+            <div id="gestureResult" style="text-align: center; padding: var(--spacing-lg);">
+              <div id="detectedGestureIcon" style="font-size: 4rem; margin-bottom: var(--spacing-sm);">👋</div>
+              <div id="detectedGestureName" style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: var(--spacing-xs);">No Gesture</div>
+              <div id="detectedGestureConfidence" style="font-size: 1rem; color: var(--text-muted);">Waiting for detection...</div>
+              <div style="margin-top: var(--spacing-md);">
+                <div style="background: var(--input-bg); border-radius: var(--radius-md); padding: var(--spacing-sm); display: inline-block;">
+                  <span style="color: var(--text-muted); font-size: 0.875rem;">Confidence: </span>
+                  <span id="confidenceValue" style="color: var(--success); font-weight: 600; font-size: 1.125rem;">0%</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
       
-      <div class="card mt-lg">
+      <!-- Gesture Rules Card -->
+      <div class="card" style="margin-top: var(--spacing-md);">
         <div class="card-header">
           <h3 class="card-title">Gesture Rules</h3>
-          <button class="btn btn-primary btn-sm" onclick="openModal('gestureModal')">
+          <button class="btn btn-primary btn-sm" id="toggleGestureFormBtn" onclick="toggleGestureForm()">
             + Add Rule
           </button>
         </div>
+        
+        <div id="gestureFormCard" style="display: none; margin-bottom: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border);">
+          <form id="gestureForm" onsubmit="event.preventDefault(); saveGestureRule();">
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label class="form-label">Gesture Type *</label>
+                <select id="gestureType" class="form-select" required>
+                  <option value="palm">✋ Palm</option>
+                  <option value="fist">✊ Fist</option>
+                  <option value="thumbs_up">👍 Thumbs Up</option>
+                  <option value="point_up">☝️ Point Up</option>
+                  <option value="victory">✌️ Victory</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Target Device *</label>
+                <select id="gestureDevice" class="form-select" required></select>
+              </div>
+            </div>
+            
+            <div class="grid grid-3">
+              <div class="form-group">
+                <label class="form-label">GPIO Pin *</label>
+                <select id="gestureGpio" class="form-select" required>
+                  <option value="1">GPIO 1</option>
+                  <option value="2">GPIO 2</option>
+                  <option value="3">GPIO 3</option>
+                  <option value="4">GPIO 4</option>
+                  <option value="5">GPIO 5</option>
+                  <option value="6">GPIO 6</option>
+                  <option value="7">GPIO 7</option>
+                  <option value="8">GPIO 8</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">GPIO State *</label>
+                <select id="gestureState" class="form-select" required>
+                  <option value="1">ON (1)</option>
+                  <option value="0">OFF (0)</option>
+                </select>
+              </div>
+              <div class="form-group" style="display: flex; align-items: flex-end;">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Rule</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        
         <div id="gestureRulesList"></div>
       </div>
     </div>
@@ -268,7 +283,7 @@
       <div class="card" style="margin-bottom: var(--spacing-lg);">
         <div class="card-header">
           <h3 class="card-title">Add New Automation Rule</h3>
-          <button class="btn btn-secondary btn-sm" id="hideFormBtn" onclick="document.getElementById('automationFormCard').style.display='none'">
+          <button class="btn btn-secondary btn-sm" id="toggleAutomationFormBtn" onclick="toggleAutomationForm()">
             ➖ Hide
           </button>
         </div>

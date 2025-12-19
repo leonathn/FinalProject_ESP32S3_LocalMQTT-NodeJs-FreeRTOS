@@ -96,9 +96,9 @@ function saveGestureRule() {
   const gesture = document.getElementById('gestureType').value;
   const deviceId = document.getElementById('gestureDevice').value;
   const gpio = document.getElementById('gestureGpio').value;
-  const action = document.getElementById('gestureAction').value;
+  const state = document.getElementById('gestureState').value;
   
-  if (!gesture || !deviceId || !gpio || !action) {
+  if (!gesture || !deviceId || !gpio || !state) {
     addEvent('error', 'Please fill all required fields');
     return;
   }
@@ -107,11 +107,45 @@ function saveGestureRule() {
     gesture,
     deviceId,
     gpio: parseInt(gpio),
-    action
+    action: state === '1' ? 'on' : 'off'
   });
   
-  closeModal('gestureModal');
+  // Hide form after saving
+  toggleGestureForm();
   document.getElementById('gestureForm').reset();
+  addEvent('success', `Gesture rule added: ${gesture} → GPIO ${gpio}`);
+}
+
+function toggleGestureForm() {
+  const formCard = document.getElementById('gestureFormCard');
+  const btn = document.getElementById('toggleGestureFormBtn');
+  
+  if (formCard.style.display === 'none') {
+    formCard.style.display = 'block';
+    btn.textContent = '➖ Hide Form';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+    populateGestureDeviceSelect();
+  } else {
+    formCard.style.display = 'none';
+    btn.textContent = '+ Add Rule';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+  }
+}
+
+function toggleAutomationForm() {
+  const formCard = document.getElementById('automationFormCard');
+  const btn = document.getElementById('toggleAutomationFormBtn');
+  
+  if (formCard.style.display === 'none') {
+    formCard.style.display = 'block';
+    btn.textContent = '➖ Hide';
+    populateDeviceSelects();
+  } else {
+    formCard.style.display = 'none';
+    btn.textContent = '➕ Show';
+  }
 }
 
 function refreshDevices() {

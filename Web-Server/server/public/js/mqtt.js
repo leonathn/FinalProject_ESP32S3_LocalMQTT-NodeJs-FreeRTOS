@@ -8,12 +8,22 @@ let mqttConnected = false;
 function initMQTT() {
   const wsUrl = `ws://${window.location.hostname}:${window.location.port}/mqtt`;
   
+  // Display MQTT broker IP
+  displayBrokerIP();
+  
+  // Use persistent client ID stored in sessionStorage to prevent reconnects
+  let clientId = sessionStorage.getItem('mqttClientId');
+  if (!clientId) {
+    clientId = 'dashboard_' + Math.random().toString(16).substr(2, 8);
+    sessionStorage.setItem('mqttClientId', clientId);
+  }
+  
   addEvent('info', 'Connecting to MQTT broker...', { url: wsUrl });
   
   mqttClient = mqtt.connect(wsUrl, {
-    clientId: 'dashboard_' + Math.random().toString(16).substr(2, 8),
-    clean: true,
-    reconnectPeriod: 3000
+    clientId: clientId,
+    clean: false,
+    reconnectPeriod: 5000
   });
   
   mqttClient.on('connect', onMQTTConnect);
@@ -32,6 +42,7 @@ function onMQTTConnect() {
   mqttClient.subscribe('devices/+/status');
   mqttClient.subscribe('devices/+/telemetry');
   mqttClient.subscribe('devices/+/diagnostics');
+  mqttClient.subscribe('device/+/status');
   mqttClient.subscribe('gestures/detected');
   
   addEvent('info', 'Subscribed to device topics');
@@ -48,7 +59,17 @@ function onMQTTMessage(topic, message) {
     }
     else if (topic.includes('/status')) {
       const deviceId = topic.split('/')[1];
-      addEvent('info', `Device status update: ${deviceId}`, { status: payload });
+      // Try to parse as JSON, fallback to text
+      try {
+        const data = JSON.parse(payload);
+        handleDeviceMessage(deviceId, data);
+      } catch {
+        // If not JSON, just register the device
+        if (!devices.has(deviceId)) {
+          registerNewDevice(deviceId, {});
+        }
+        addEvent('info', `Device status update: ${deviceId}`, { status: payload });
+      }
     }
     else if (topic === 'gestures/detected') {
       const data = JSON.parse(payload);
@@ -119,5 +140,32 @@ function disconnectMQTT() {
     mqttClient.end();
     mqttConnected = false;
     addEvent('info', 'MQTT disconnected');
+  }
+}
+
+function displayBrokerIP() {
+  const brokerIpEl = document.getElementById('brokerIp');
+  if (!brokerIpEl) return;
+  
+  // Get the actual hostname (could be IP or hostname)
+  const hostname = window.location.hostname;
+  
+  // If it's localhost or 127.0.0.1, try to get the real IP
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Fetch from server API
+    fetch('/api/server-ip')
+      .then(res => res.json())
+      .then(data => {
+        if (data.ip) {
+          brokerIpEl.textContent = `mqtt://${data.ip}:1883`;
+        } else {
+          brokerIpEl.textContent = 'mqtt://localhost:1883';
+        }
+      })
+      .catch(() => {
+        brokerIpEl.textContent = 'mqtt://localhost:1883';
+      });
+  } else {
+    brokerIpEl.textContent = `mqtt://${hostname}:1883`;
   }
 }

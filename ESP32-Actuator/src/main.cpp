@@ -12,28 +12,6 @@
 #include "neopixel_handler.h"
 #include "tasks.h"
 #include <Arduino.h>
-#include <ArduinoJson.h>
-
-// Define constants if not found in config.h
-#ifndef CONFIG_RESET_HOLD_MS
-#define CONFIG_RESET_HOLD_MS 3000
-#endif
-
-// Forward declarations
-void resetConfig();  // from config_manager.cpp
-void TaskActuator(void *pvParameters);
-void TaskUI(void *pvParameters);
-void TaskMQTT(void *pvParameters);
-
-// Sensor stubs (actuator doesn't use sensors but web_server references them)
-SemaphoreHandle_t i2cMutex = NULL;
-DHT20 dht20;
-SensorState sensorState;
-DiagnosticsData lastDiagnostics;
-
-void runDiagnostics() {
-  // No-op for actuator
-}
 
 // ========== GLOBAL OBJECT INSTANCES ==========
 Preferences prefs;
@@ -55,18 +33,27 @@ bool apMode = false;
 bool wifiConnected = false;
 bool mqttConnected = false;
 
-SemaphoreHandle_t commandMutex = NULL;
-QueueHandle_t commandQueue = NULL;
-EventGroupHandle_t connectionEvents = NULL;
+SemaphoreHandle_t commandMutex;
+QueueHandle_t commandQueue;
+EventGroupHandle_t connectionEvents;
 
 // ========== ACTUATOR STATE ==========
-// GPIO output pins mapping (Matching board pinout: D2-D11 connectors)
+// GPIO output pins mapping (8 channels)
 const uint8_t gpioOutputPins[8] = {
-  5, 6, 7, 8,      // GPIO 1-4: D2-D5 Relay outputs
-  9, 10, 21, 38    // GPIO 5-8: D6-D11 Relay outputs
+  5, 6, 7, 8,      // GPIO 1-4: Channels 1-4
+  9, 10, 21, 38    // GPIO 5-8: Channels 5-8
 };
 
-ActuatorState actuatorState = {  {false, false, false, false, false, false, false, false}, 0, 0, 0};
+// GPIO state tracking
+bool gpioStates[8] = {false, false, false, false, false, false, false, false};
+
+struct ActuatorState {
+  bool relayState;
+  uint8_t ledBrightness;
+  uint32_t ledColor;
+  uint32_t commandCount;
+  uint32_t errorCount;
+} actuatorState = {false, 0, 0, 0, 0};
 
 // ========== BUTTON STATE ==========
 unsigned long buttonPressStart = 0;
@@ -148,7 +135,7 @@ void setup() {
   
   // Create FreeRTOS synchronization primitives
   commandMutex = xSemaphoreCreateMutex();
-  commandQueue = xQueueCreate(20, 256);  // Buffer 20 commands (256 bytes each)
+  commandQueue = xQueueCreate(20, sizeof(String));  // Buffer 20 commands
   connectionEvents = xEventGroupCreate();
   
   if (!commandMutex || !commandQueue || !connectionEvents) {
@@ -187,123 +174,4 @@ void loop() {
   }
   webServer.handleClient();
   delay(10);
-}
-
-void TaskActuator(void *pvParameters) {
-  Serial.println("[Actuator] Task started");
-  
-  // Setup all GPIO output pins
-  Serial.println("[GPIO] Initializing 8 output pins:");
-  for (int i = 0; i < 8; i++) {
-    pinMode(gpioOutputPins[i], OUTPUT);
-    digitalWrite(gpioOutputPins[i], LOW);
-    actuatorState.gpioStates[i] = false;
-    Serial.println("  GPIO" + String(i + 1) + " -> Pin " + String(gpioOutputPins[i]));
-  }
-  
-  Serial.println("[Actuator] Ready - Waiting for commands");
-  
-  char commandBuffer[256];
-  for (;;) {
-    // Check for commands in queue
-    if (xQueueReceive(commandQueue, &commandBuffer, pdMS_TO_TICKS(100)) == pdTRUE) {
-      String command = String(commandBuffer);
-      Serial.println("[Actuator] Received command: " + command);
-      
-      // Parse JSON command
-      JsonDocument doc;
-      DeserializationError error = deserializeJson(doc, command);
-      
-      if (error) {
-        Serial.println("[Actuator] Failed to parse command JSON");
-        actuatorState.errorCount++;
-        continue;
-      }
-      
-      // Get command type (try both "cmd" and "type" fields for compatibility)
-      const char* type = doc["type"] | doc["cmd"];
-      
-      if (strcmp(type, "gpio") == 0 || strcmp(type, "relay") == 0) {
-        // GPIO ON/OFF command: {"cmd":"gpio", "pin":1, "state":true}
-        int gpioNum = doc["pin"];  // 1-8
-        bool state = doc["state"];
-        
-        if (gpioNum >= 1 && gpioNum <= 8) {
-          int idx = gpioNum - 1;
-          digitalWrite(gpioOutputPins[idx], state ? HIGH : LOW);
-          actuatorState.gpioStates[idx] = state;
-          Serial.println("[GPIO" + String(gpioNum) + "] Pin " + String(gpioOutputPins[idx]) + " -> " + String(state ? "ON" : "OFF"));
-          actuatorState.commandCount++;
-        } else {
-          Serial.println("[Actuator] Invalid GPIO number: " + String(gpioNum));
-          actuatorState.errorCount++;
-        }
-      }
-      else if (strcmp(type, "neopixel") == 0 || strcmp(type, "led") == 0) {
-        // NeoPixel color command: {"cmd":"neopixel", "color":{"r":255,"g":0,"b":0}}
-        uint8_t r = doc["color"]["r"];
-        uint8_t g = doc["color"]["g"];
-        uint8_t b = doc["color"]["b"];
-        pixel.setPixelColor(0, pixel.Color(r, g, b));
-        pixel.show();
-        actuatorState.ledColor = (r << 16) | (g << 8) | b;
-        Serial.println("[NeoPixel] Color updated: R=" + String(r) + " G=" + String(g) + " B=" + String(b));
-        actuatorState.commandCount++;
-      }
-      else {
-        Serial.println("[Actuator] Unknown command type: " + String(type));
-        actuatorState.errorCount++;
-      }
-    }
-    
-    vTaskDelay(pdMS_TO_TICKS(50));
-  }
-}
-
-
-void TaskUI(void *pvParameters) {
-  const TickType_t xDelay = pdMS_TO_TICKS(500);  // Update every 500ms
-  
-  for (;;) {
-    updateNeoPixel();
-    vTaskDelay(xDelay);
-  }
-}
-
-void TaskMQTT(void *pvParameters) {
-  const TickType_t xDelay = pdMS_TO_TICKS(100);
-  
-  for (;;) {
-    // Wait for MQTT connection
-    EventBits_t bits = xEventGroupWaitBits(
-      connectionEvents,
-      MQTT_CONNECTED_BIT,
-      pdFALSE,
-      pdTRUE,
-      xDelay
-    );
-    
-    if (bits & MQTT_CONNECTED_BIT) {
-      mqttClient.loop();
-      
-      // Reconnect if needed
-      if (!mqttClient.connected()) {
-        xEventGroupClearBits(connectionEvents, MQTT_CONNECTED_BIT);
-        mqttConnected = false;
-        updateNeoPixel();
-        
-        connectMQTT();
-      }
-    } else {
-      // Not connected, try to connect if WiFi is up
-      EventBits_t wifiBits = xEventGroupGetBits(connectionEvents);
-      if (wifiBits & WIFI_CONNECTED_BIT) {
-        if (mqttServer.length() > 0) {
-          connectMQTT();
-        }
-      }
-    }
-    
-    vTaskDelay(xDelay);
-  }
 }

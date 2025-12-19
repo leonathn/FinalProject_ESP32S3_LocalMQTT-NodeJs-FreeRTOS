@@ -15,10 +15,15 @@ async function toggleCamera() {
   const video = document.getElementById('gestureVideo');
   const canvas = document.getElementById('gestureCanvas');
   const btn = document.getElementById('toggleCameraBtn');
+  const placeholder = document.querySelector('.camera-placeholder');
   
   if (!cameraActive) {
     try {
       await initializeGestureRecognition();
+      
+      // Hide placeholder, show canvas
+      if (placeholder) placeholder.style.display = 'none';
+      canvas.style.display = 'block';
       
       btn.textContent = '🛑 Stop Camera';
       btn.classList.remove('btn-primary');
@@ -40,6 +45,10 @@ async function toggleCamera() {
     video.srcObject = null;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Show placeholder, hide canvas
+    if (placeholder) placeholder.style.display = 'block';
+    canvas.style.display = 'none';
     
     btn.textContent = '📷 Start Camera';
     btn.classList.remove('btn-danger');
@@ -98,15 +107,64 @@ function onHandsResults(results) {
       ctx.font = 'bold 24px Inter, sans-serif';
       ctx.fillText(`${gesture.name} (${Math.round(gesture.confidence * 100)}%)`, 10, 30);
       
+      // Update result card
+      updateGestureResultCard(gesture.name, gesture.confidence);
+      
       const now = Date.now();
       if (now - lastGestureTime > GESTURE_COOLDOWN) {
         checkGestureRules(gesture.name);
         lastGestureTime = now;
       }
+    } else {
+      // No confident gesture detected
+      updateGestureResultCard(null, 0);
     }
   }
   
   ctx.restore();
+}
+
+function updateGestureResultCard(gestureName, confidence) {
+  const iconMap = {
+    'palm': '✋',
+    'fist': '✊',
+    'thumbs_up': '👍',
+    'point_up': '☝️',
+    'victory': '✌️'
+  };
+  
+  const nameMap = {
+    'palm': 'Palm',
+    'fist': 'Fist',
+    'thumbs_up': 'Thumbs Up',
+    'point_up': 'Point Up',
+    'victory': 'Victory'
+  };
+  
+  const iconEl = document.getElementById('detectedGestureIcon');
+  const nameEl = document.getElementById('detectedGestureName');
+  const confEl = document.getElementById('detectedGestureConfidence');
+  const confValue = document.getElementById('confidenceValue');
+  
+  if (!iconEl || !nameEl || !confEl || !confValue) return;
+  
+  if (gestureName && confidence > 0) {
+    iconEl.textContent = iconMap[gestureName] || '👋';
+    nameEl.textContent = nameMap[gestureName] || 'Unknown';
+    nameEl.style.color = 'var(--primary)';
+    confEl.textContent = 'Gesture detected!';
+    confEl.style.color = 'var(--success)';
+    confValue.textContent = Math.round(confidence * 100) + '%';
+    confValue.style.color = confidence >= 0.9 ? 'var(--success)' : 'var(--warning)';
+  } else {
+    iconEl.textContent = '👋';
+    nameEl.textContent = 'No Gesture';
+    nameEl.style.color = 'var(--text-muted)';
+    confEl.textContent = 'Waiting for detection...';
+    confEl.style.color = 'var(--text-muted)';
+    confValue.textContent = '0%';
+    confValue.style.color = 'var(--text-muted)';
+  }
 }
 
 function detectGestureFromLandmarks(landmarks) {
