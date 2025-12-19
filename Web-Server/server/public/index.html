@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 IoT Fleet Manager</title>
+  
+  <!-- CSS Modules -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  
+  <!-- External Libraries -->
+  <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <div class="header-title">
+          <span class="icon">🚀</span>
+          <div>
+            <h1>ESP32 IoT Fleet Manager</h1>
+            <div class="header-subtitle">Enterprise Device Management Platform</div>
+          </div>
+        </div>
+        <div class="header-status">
+          <div class="status-indicator" id="mqttStatus">
+            <span class="status-dot"></span>
+            Connecting...
+          </div>
+          <div class="status-indicator">
+            <span class="icon">📱</span>
+            <span id="deviceCount">2</span> Devices
+          </div>
+        </div>
+      </div>
+      
+      <nav class="nav-tabs">
+        <button class="nav-tab" onclick="switchTab('dashboard')">
+          <span>📊</span> Dashboard
+        </button>
+        <button class="nav-tab" onclick="switchTab('devices')">
+          <span>🔧</span> Device Fleet
+        </button>
+        <button class="nav-tab" onclick="switchTab('gestures')">
+          <span>👋</span> Gesture Control
+        </button>
+        <button class="nav-tab" onclick="switchTab('automation')">
+          <span>⚡</span> Automation
+        </button>
+        <button class="nav-tab" onclick="switchTab('events')">
+          <span>📋</span> Event Logs
+        </button>
+        <button class="nav-tab" onclick="switchTab('docs')">
+          <span>📖</span> MQTT Docs
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    
+    <!-- Dashboard Page -->
+    <div id="dashboardPage" class="page">
+      
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📱</div>
+          <div class="stat-value" id="totalDevices">2</div>
+          <div class="stat-label">Total Devices</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value" id="onlineDevices">2</div>
+          <div class="stat-label">Online</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-value" id="sensorCount">1</div>
+          <div class="stat-label">Sensors</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-value" id="automationCount">1</div>
+          <div class="stat-label">Automations</div>
+        </div>
+      </div>
+
+      <!-- MQTT Broker Info & Topics -->
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">🔌 MQTT Broker Information</h2>
+            </div>
+          </div>
+          
+          <div style="background: var(--input-bg); border-radius: var(--radius-md); padding: var(--spacing-md); font-family: 'Courier New', monospace; font-size: 0.875rem;">
+            <div style="margin-bottom: 1rem;">
+              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">TCP Connection:</div>
+              <div style="color: var(--primary);">mqtt://localhost:1883</div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">WebSocket Connection:</div>
+              <div style="color: var(--primary);">ws://localhost:3000/mqtt</div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">Client ID:</div>
+              <div style="color: var(--text-secondary);">Auto-generated</div>
+            </div>
+            <div>
+              <div style="color: var(--text-muted); margin-bottom: 0.25rem;">QoS Level:</div>
+              <div style="color: var(--text-secondary);">0, 1, 2 supported</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📡 Available Topics</h2>
+          </div>
+          
+          <div style="margin-bottom: 1.5rem;">
+            <div style="font-weight: 600; color: var(--success); margin-bottom: 0.5rem;">Subscribe:</div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+              <span style="color: var(--primary);">devices/+/status</span>
+            </div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+              <span style="color: var(--primary);">devices/+/telemetry</span>
+            </div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+              <span style="color: var(--primary);">devices/+/diagnostics</span>
+            </div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+              <span style="color: var(--primary);">gestures/detected</span>
+            </div>
+          </div>
+          
+          <div>
+            <div style="font-weight: 600; color: var(--warning); margin-bottom: 0.5rem;">Publish (Control):</div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+              <span style="color: var(--warning);">device/{id}/gpio/set</span>
+            </div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+              <span style="color: var(--warning);">device/{id}/pwm</span>
+            </div>
+            <div style="background: var(--input-bg); border-radius: var(--radius-sm); padding: var(--spacing-sm); font-family: 'Courier New', monospace; font-size: 0.8125rem;">
+              <span style="color: var(--warning);">device/{id}/config</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connected Devices -->
+      <div class="card mt-lg">
+        <div class="card-header">
+          <h2 class="card-title">📱 Connected Devices</h2>
+          <button class="btn btn-secondary btn-sm" onclick="refreshDevices()">
+            🔄 Refresh
+          </button>
+        </div>
+        <div id="dashboardDeviceGrid" class="grid grid-2"></div>
+      </div>
+      
+    </div>
+
+    <!-- Device Fleet Page -->
+    <div id="devicesPage" class="page">
+      <div class="flex-between mb-lg">
+        <div>
+          <h2 style="color: var(--primary); margin: 0 0 0.5rem 0; font-size: 1.75rem;">Device Fleet Management</h2>
+          <p class="text-muted">Monitor and control all ESP32 devices</p>
+        </div>
+        <div class="search-box" style="width: 300px;">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" placeholder="Search devices..." id="deviceSearch">
+        </div>
+      </div>
+      
+      <div id="deviceGrid" class="grid grid-2"></div>
+    </div>
+
+    <!-- Gesture Control Page -->
+    <div id="gesturesPage" class="page">
+      <h2 style="color: var(--primary); margin-bottom: 1.5rem; font-size: 1.75rem;">Hand Gesture Recognition</h2>
+      
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 class="card-title">📹 Camera Feed</h3>
+          <div class="video-container">
+            <video id="gestureVideo" style="display: none;"></video>
+            <canvas id="gestureCanvas" width="640" height="480"></canvas>
+            <div class="camera-placeholder">
+              <div class="camera-icon">📷</div>
+              <div>Camera Not Active</div>
+              <div class="text-sm text-muted mt-sm">Click "Start Camera" to begin gesture recognition</div>
+            </div>
+          </div>
+          <div class="mt-md">
+            <button id="toggleCameraBtn" class="btn btn-primary" onclick="toggleCamera()">
+              📷 Start Camera
+            </button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3 class="card-title">✋ Hand Gesture Controls</h3>
+          <div class="gesture-grid mb-lg">
+            <div class="gesture-card">
+              <div class="gesture-icon">✋</div>
+              <div class="gesture-name">Palm Open</div>
+              <div class="gesture-confidence">All fingers open</div>
+            </div>
+            <div class="gesture-card">
+              <div class="gesture-icon">✊</div>
+              <div class="gesture-name">Fist</div>
+              <div class="gesture-confidence">All fingers closed</div>
+            </div>
+            <div class="gesture-card">
+              <div class="gesture-icon">👍</div>
+              <div class="gesture-name">Thumbs Up</div>
+              <div class="gesture-confidence">Approve</div>
+            </div>
+            <div class="gesture-card">
+              <div class="gesture-icon">☝️</div>
+              <div class="gesture-name">Point Up</div>
+              <div class="gesture-confidence">One finger</div>
+            </div>
+            <div class="gesture-card">
+              <div class="gesture-icon">✌️</div>
+              <div class="gesture-name">Victory</div>
+              <div class="gesture-confidence">Two fingers</div>
+            </div>
+          </div>
+          
+          <div class="info-box">
+            <div class="info-box-title">💡 Tips</div>
+            <div class="info-box-content">
+              <ul>
+                <li>Hold gesture for 1 second</li>
+                <li>Keep hand centered in frame</li>
+                <li>Ensure good lighting conditions</li>
+                <li>2-second cooldown between triggers</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card mt-lg">
+        <div class="card-header">
+          <h3 class="card-title">Gesture Rules</h3>
+          <button class="btn btn-primary btn-sm" onclick="openModal('gestureModal')">
+            + Add Rule
+          </button>
+        </div>
+        <div id="gestureRulesList"></div>
+      </div>
+    </div>
+
+    <!-- Automation Page -->
+    <div id="automationPage" class="page">
+      <h2 style="color: var(--primary); margin-bottom: 1.5rem; font-size: 1.75rem;">Automation Rules</h2>
+      
+      <div class="card mb-lg">
+        <div class="card-header">
+          <h3 class="card-title">Add New Automation Rule</h3>
+          <button class="btn btn-secondary btn-sm" id="hideFormBtn" onclick="document.getElementById('automationFormCard').style.display='none'">
+            ➖ Hide Form
+          </button>
+        </div>
+        
+        <div id="automationFormCard">
+          <form id="automationForm" onsubmit="event.preventDefault(); saveAutomationRule();">
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label class="form-label">Rule Name *</label>
+                <input type="text" id="ruleName" class="form-input" placeholder="e.g., Auto Fan Control" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Enabled</label>
+                <select class="form-select">
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            </div>
+            
+            <h4 style="color: var(--primary); margin: 1.5rem 0 1rem 0;">Trigger Condition</h4>
+            <div class="grid grid-4">
+              <div class="form-group">
+                <label class="form-label">Trigger Type *</label>
+                <select id="conditionParameter" class="form-select" required>
+                  <option value="tC">Temperature</option>
+                  <option value="rh">Humidity</option>
+                  <option value="rssi">Signal Strength</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Source Device *</label>
+                <select id="conditionDevice" class="form-select" required></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Operator *</label>
+                <select id="conditionOperator" class="form-select" required>
+                  <option value=">">Greater Than (&gt;)</option>
+                  <option value="<">Less Than (&lt;)</option>
+                  <option value=">=">Greater or Equal (&gt;=)</option>
+                  <option value="<=">Less or Equal (&lt;=)</option>
+                  <option value="==">Equal (==)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Value *</label>
+                <input type="number" id="conditionThreshold" class="form-input" step="0.1" placeholder="e.g., 30" required>
+              </div>
+            </div>
+            
+            <h4 style="color: var(--primary); margin: 1.5rem 0 1rem 0;">Action</h4>
+            <div class="grid grid-4">
+              <div class="form-group">
+                <label class="form-label">Action Type *</label>
+                <select class="form-select">
+                  <option value="gpio">Control GPIO</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Target Device *</label>
+                <select id="actionDevice" class="form-select" required></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">GPIO Pin *</label>
+                <select id="actionGpio" class="form-select" required>
+                  ${[1,2,3,4,5,6,7,8].map(i => `<option value="${i}">GPIO ${i}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">GPIO State *</label>
+                <select id="actionState" class="form-select" required>
+                  <option value="1">ON (1)</option>
+                  <option value="0">OFF (0)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="autoToggle" checked>
+                <span>Auto-toggle (turn OFF when condition not met)</span>
+              </label>
+            </div>
+            
+            <div class="flex gap-sm mt-md">
+              <button type="submit" class="btn btn-success">💾 Save Rule</button>
+              <button type="button" class="btn btn-secondary" onclick="document.getElementById('automationForm').reset()">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3 class="card-title">Active Automation Rules</h3>
+        <div id="automationRulesList"></div>
+      </div>
+    </div>
+
+    <!-- Event Logs Page -->
+    <div id="eventsPage" class="page">
+      <div class="flex-between mb-lg">
+        <div>
+          <h2 style="color: var(--primary); margin: 0 0 0.5rem 0; font-size: 1.75rem;">Event Logs</h2>
+          <p class="text-muted">System activity and device events</p>
+        </div>
+        <div class="flex gap-sm">
+          <button class="btn btn-secondary" id="exportEventsBtn">
+            📥 Export
+          </button>
+          <button class="btn btn-danger" id="clearEventsBtn">
+            🗑️ Clear Logs
+          </button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div id="eventLog" class="event-log"></div>
+      </div>
+    </div>
+
+    <!-- MQTT Documentation Page -->
+    <div id="docsPage" class="page">
+      <h2 style="color: var(--primary); margin-bottom: 1.5rem; font-size: 1.75rem;">MQTT Broker Documentation</h2>
+      
+      <div class="card mb-lg">
+        <h3 class="card-title">Connection Details</h3>
+        <pre style="background: var(--input-bg); border: 1px solid var(--border); padding: 1rem; border-radius: var(--radius-md); overflow-x: auto;">
+TCP Broker: mqtt://localhost:1883
+WebSocket: ws://localhost:3000/mqtt
+Protocol: MQTT 3.1.1 / 5.0
+QoS Levels: 0, 1, 2 supported</pre>
+      </div>
+      
+      <div class="card mb-lg">
+        <h3 class="card-title">Topic Structure</h3>
+        
+        <h4 style="color: var(--success); margin: 1.5rem 0 1rem 0;">📥 Subscribe Topics (Receive Data)</h4>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Topic</th>
+                <th>Description</th>
+                <th>Payload Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>devices/+/status</code></td>
+                <td>Device online/offline status</td>
+                <td><code>{"online": true}</code></td>
+              </tr>
+              <tr>
+                <td><code>devices/+/telemetry</code></td>
+                <td>Sensor data from devices</td>
+                <td><code>{"tC": 23.5, "rh": 65, "heap": 123000}</code></td>
+              </tr>
+              <tr>
+                <td><code>devices/+/diagnostics</code></td>
+                <td>Device health information</td>
+                <td><code>{"uptime": 3600, "rssi": -42}</code></td>
+              </tr>
+              <tr>
+                <td><code>gestures/detected</code></td>
+                <td>Hand gesture recognition (palm, fist, thumbs_up, point_up, victory)</td>
+                <td><code>{"gesture": "thumbs_up", "confidence": 0.95, "timestamp": 123456789}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <h4 style="color: var(--warning); margin: 1.5rem 0 1rem 0;">📤 Publish Topics (Send Commands)</h4>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Topic</th>
+                <th>Description</th>
+                <th>Payload Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>device/{deviceId}/gpio/set</code></td>
+                <td>Control GPIO pins</td>
+                <td><code>{"gpio": 1, "state": 1}</code></td>
+              </tr>
+              <tr>
+                <td><code>devices/{deviceId}/pwm</code></td>
+                <td>Control PWM channels</td>
+                <td><code>{"channel": 0, "value": 128}</code></td>
+              </tr>
+              <tr>
+                <td><code>devices/{deviceId}/config</code></td>
+                <td>Update device configuration</td>
+                <td><code>{"interval": 5000}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3 class="card-title">Example Client Code</h3>
+        
+        <h4 style="margin: 1rem 0 0.5rem 0;">Python (paho-mqtt)</h4>
+        <pre>import paho.mqtt.client as mqtt
+
+client = mqtt.Client()
+client.connect("localhost", 1883, 60)
+
+# Subscribe to telemetry
+client.subscribe("devices/+/telemetry")
+
+# Publish GPIO command
+client.publish("device/ESP32-IOT-ACTUATOR-4e5c/gpio/set", '{"gpio":1,"state":1}')
+
+client.loop_forever()</pre>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Gesture Rule Modal -->
+  <div id="gestureModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Add Gesture Rule</h2>
+        <button class="modal-close" onclick="closeModal('gestureModal')">✕</button>
+      </div>
+      
+      <form id="gestureForm" onsubmit="event.preventDefault(); saveGestureRule();">
+        <div class="form-group">
+          <label class="form-label">Gesture</label>
+          <select id="gestureType" class="form-select" required>
+            <option value="palm">✋ Palm</option>
+            <option value="fist">✊ Fist</option>
+            <option value="thumbs_up">👍 Thumbs Up</option>
+            <option value="point_up">☝️ Point Up</option>
+            <option value="victory">✌️ Victory</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Device</label>
+          <select id="gestureDevice" class="form-select" required></select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">GPIO Pin</label>
+          <select id="gestureGpio" class="form-select" required>
+            ${[1,2,3,4,5,6,7,8].map(i => `<option value="${i}">GPIO ${i}</option>`).join('')}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Action</label>
+          <select id="gestureAction" class="form-select" required>
+            <option value="on">Turn ON</option>
+            <option value="off">Turn OFF</option>
+          </select>
+        </div>
+        
+        <div class="flex gap-sm">
+          <button type="submit" class="btn btn-success">Save Rule</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('gestureModal')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Automation Rule Modal -->
+  <div id="automationModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Add Automation Rule</h2>
+        <button class="modal-close" onclick="closeModal('automationModal')">✕</button>
+      </div>
+      
+      <p class="text-muted mb-md">Create conditional rules to automatically control devices based on sensor readings.</p>
+      
+      <form id="automationFormModal" onsubmit="event.preventDefault(); saveAutomationRule();">
+        <div class="form-group">
+          <label class="form-label">Rule Name</label>
+          <input type="text" id="ruleName" class="form-input" placeholder="e.g., High Temperature Alert" required>
+        </div>
+        
+        <h4 style="margin: 1.5rem 0 1rem 0;">Condition (IF)</h4>
+        
+        <div class="form-group">
+          <label class="form-label">Sensor Device</label>
+          <select id="conditionDevice" class="form-select" required></select>
+        </div>
+        
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label">Parameter</label>
+            <select id="conditionParameter" class="form-select" required>
+              <option value="tC">Temperature (°C)</option>
+              <option value="rh">Humidity (%)</option>
+              <option value="rssi">Signal (dBm)</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Operator</label>
+            <select id="conditionOperator" class="form-select" required>
+              <option value=">">&gt; Greater than</option>
+              <option value="<">&lt; Less than</option>
+              <option value=">=">&gt;= Greater or equal</option>
+              <option value="<=">&lt;= Less or equal</option>
+              <option value="==">== Equal to</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Threshold</label>
+          <input type="number" id="conditionThreshold" class="form-input" step="0.1" placeholder="e.g., 30" required>
+        </div>
+        
+        <h4 style="margin: 1.5rem 0 1rem 0;">Action (THEN)</h4>
+        
+        <div class="form-group">
+          <label class="form-label">Actuator Device</label>
+          <select id="actionDevice" class="form-select" required></select>
+        </div>
+        
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label">GPIO Pin</label>
+            <select id="actionGpio" class="form-select" required>
+              ${[1,2,3,4,5,6,7,8].map(i => `<option value="${i}">GPIO ${i}</option>`).join('')}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <select id="actionState" class="form-select" required>
+              <option value="1">ON</option>
+              <option value="0">OFF</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="autoToggle" checked>
+            <span>Auto-toggle (turn OFF when condition not met)</span>
+          </label>
+        </div>
+        
+        <div class="flex gap-sm mt-lg">
+          <button type="submit" class="btn btn-success">Save Rule</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('automationModal')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/events.js"></script>
+  <script src="js/mqtt.js"></script>
+  <script src="js/devices.js"></script>
+  <script src="js/gestures.js"></script>
+  <script src="js/automation.js"></script>
+  <script src="js/ui.js"></script>
+
+  <script>
+    // Initialize dashboard device grid renderer
+    function updateDashboardGrid() {
+      const grid = document.getElementById('dashboardDeviceGrid');
+      if (!grid) return;
+      
+      const deviceArray = getAllDevices();
+      if (deviceArray.length === 0) {
+        grid.innerHTML = '<div class="text-center text-muted" style="grid-column: 1/-1;">Waiting for devices to connect...</div>';
+        return;
+      }
+      
+      grid.innerHTML = deviceArray.slice(0, 2).map(device => {
+        const isOnline = device.online;
+        const telemetry = device.telemetry || {};
+        
+        return `
+          <div class="device-card">
+            <div class="device-header">
+              <div class="device-info">
+                <h3>${device.name}</h3>
+                <span class="badge badge-${device.type === 'actuator' ? 'actuator' : 'sensor'}">
+                  ${device.type}
+                </span>
+              </div>
+              <span class="badge ${isOnline ? 'badge-success' : 'badge-danger'}">
+                ${isOnline ? '● Online' : '● Offline'}
+              </span>
+            </div>
+            
+            ${device.type === 'sensor' && telemetry.tC !== undefined ? `
+              <div class="telemetry-grid">
+                <div class="telemetry-item">
+                  <div class="telemetry-icon">🌡️</div>
+                  <div class="telemetry-label">Temp</div>
+                  <div class="telemetry-value">${telemetry.tC}°C</div>
+                </div>
+                <div class="telemetry-item">
+                  <div class="telemetry-icon">💧</div>
+                  <div class="telemetry-label">Humidity</div>
+                  <div class="telemetry-value">${telemetry.rh}%</div>
+                </div>
+              </div>
+            ` : ''}
+            
+            ${device.type === 'actuator' ? `
+              <div class="gpio-grid">
+                ${[1, 2, 3, 4].map(gpio => `
+                  <div class="gpio-item">
+                    <div class="gpio-label">GPIO ${gpio}</div>
+                    <div class="gpio-buttons">
+                      <button class="gpio-btn on" onclick="controlGPIO('${device.id}', ${gpio}, 1)">ON</button>
+                      <button class="gpio-btn off" onclick="controlGPIO('${device.id}', ${gpio}, 0)">OFF</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            
+            <div class="device-footer">
+              <span>Heap: ${telemetry.heap ? formatBytes(telemetry.heap) : 'N/A'}</span>
+              <span>Updated: ${isOnline ? new Date(device.lastSeen).toLocaleTimeString() : 'Offline'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Update automation count
+      const automationCountEl = document.getElementById('automationCount');
+      if (automationCountEl) {
+        automationCountEl.textContent = automationRules.length;
+      }
+      
+      // Update device count in header
+      const deviceCountEl = document.getElementById('deviceCount');
+      if (deviceCountEl) {
+        deviceCountEl.textContent = deviceArray.length;
+      }
+    }
+    
+    // Update dashboard grid periodically
+    setInterval(updateDashboardGrid, 1000);
+  </script>
+
+</body>
+</html>
