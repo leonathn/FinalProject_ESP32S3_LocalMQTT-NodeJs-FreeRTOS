@@ -273,8 +273,11 @@ function renderGestureRules() {
                      onchange="toggleGestureRule(${rule.id})">
               <span class="toggle-slider"></span>
             </label>
+            <button class="btn btn-secondary btn-sm" onclick="editGestureRule(${rule.id})">
+              ✏️ Edit
+            </button>
             <button class="btn btn-danger btn-sm" onclick="removeGestureRule(${rule.id})">
-              Delete
+              🗑️ Delete
             </button>
           </div>
         </div>
@@ -292,4 +295,65 @@ function getGestureIcon(gestureName) {
     victory: '✌️'
   };
   return icons[gestureName] || '👋';
+}
+
+function saveGestureRule() {
+  const gesture = document.getElementById('gestureType').value;
+  const deviceId = document.getElementById('gestureDevice').value;
+  const gpio = document.getElementById('gestureGpio').value;
+  const state = document.getElementById('gestureState').value;
+  
+  if (!gesture || !deviceId || !gpio || state === '') {
+    addEvent('error', 'Please fill all required fields');
+    return;
+  }
+  
+  const rule = {
+    gesture,
+    deviceId,
+    gpio: parseInt(gpio),
+    action: state === '1' ? 'on' : 'off'
+  };
+  
+  // Check if editing existing rule
+  const editingRuleId = document.getElementById('gestureForm').dataset.editingId;
+  if (editingRuleId) {
+    const existingRule = gestureRules.find(r => r.id == editingRuleId);
+    if (existingRule) {
+      Object.assign(existingRule, rule);
+      addEvent('success', 'Gesture rule updated', rule);
+    }
+    delete document.getElementById('gestureForm').dataset.editingId;
+  } else {
+    addGestureRule(rule);
+  }
+  
+  document.getElementById('gestureForm').reset();
+  toggleGestureForm();
+  renderGestureRules();
+}
+
+function editGestureRule(ruleId) {
+  const rule = gestureRules.find(r => r.id === ruleId);
+  if (!rule) return;
+  
+  // Populate form
+  document.getElementById('gestureType').value = rule.gesture;
+  document.getElementById('gestureDevice').value = rule.deviceId;
+  document.getElementById('gestureGpio').value = rule.gpio;
+  document.getElementById('gestureState').value = rule.action === 'on' ? '1' : '0';
+  
+  // Store editing ID
+  document.getElementById('gestureForm').dataset.editingId = ruleId;
+  
+  // Show form if hidden
+  const formCard = document.getElementById('gestureFormCard');
+  if (formCard.style.display === 'none') {
+    toggleGestureForm();
+  }
+  
+  // Scroll to form
+  formCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  
+  addEvent('info', 'Editing gesture rule: ' + rule.gesture);
 }

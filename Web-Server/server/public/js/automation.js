@@ -134,8 +134,11 @@ function renderAutomationRules() {
                      onchange="toggleAutomationRule(${rule.id})">
               <span class="toggle-slider"></span>
             </label>
+            <button class="btn btn-secondary btn-sm" onclick="editAutomationRule(${rule.id})">
+              ✏️ Edit
+            </button>
             <button class="btn btn-danger btn-sm" onclick="removeAutomationRule(${rule.id})">
-              Delete
+              🗑️ Delete
             </button>
           </div>
         </div>
@@ -184,7 +187,50 @@ function saveAutomationRule() {
     autoToggle
   };
   
-  addAutomationRule(rule);
+  // Check if editing existing rule
+  const editingRuleId = document.getElementById('automationForm').dataset.editingId;
+  if (editingRuleId) {
+    const existingRule = automationRules.find(r => r.id == editingRuleId);
+    if (existingRule) {
+      Object.assign(existingRule, rule);
+      addEvent('success', 'Automation rule updated', rule);
+    }
+    delete document.getElementById('automationForm').dataset.editingId;
+  } else {
+    addAutomationRule(rule);
+  }
+  
   closeModal('automationModal');
   document.getElementById('automationForm').reset();
+  renderAutomationRules();
+}
+
+function editAutomationRule(ruleId) {
+  const rule = automationRules.find(r => r.id === ruleId);
+  if (!rule) return;
+  
+  // Populate form
+  document.getElementById('ruleName').value = rule.name;
+  document.getElementById('conditionDevice').value = rule.condition.deviceId;
+  document.getElementById('conditionParameter').value = rule.condition.parameter;
+  document.getElementById('conditionOperator').value = rule.condition.operator;
+  document.getElementById('conditionThreshold').value = rule.condition.threshold;
+  document.getElementById('actionDevice').value = rule.action.deviceId;
+  document.getElementById('actionGpio').value = rule.action.gpio;
+  document.getElementById('actionState').value = rule.action.state;
+  document.getElementById('autoToggle').checked = rule.autoToggle;
+  
+  // Store editing ID
+  document.getElementById('automationForm').dataset.editingId = ruleId;
+  
+  // Show form if hidden
+  const formCard = document.getElementById('automationFormCard');
+  if (formCard.style.display === 'none') {
+    toggleAutomationForm();
+  }
+  
+  // Scroll to form
+  formCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  
+  addEvent('info', 'Editing automation rule: ' + rule.name);
 }

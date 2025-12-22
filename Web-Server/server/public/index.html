@@ -41,7 +41,7 @@
           </div>
           <div class="status-indicator">
             <span class="icon">📱</span>
-            <span id="deviceCount">2</span> Devices
+            <span id="deviceCount">0</span> Devices
           </div>
         </div>
       </div>
@@ -79,22 +79,22 @@
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon">📱</div>
-          <div class="stat-value" id="totalDevices">2</div>
+          <div class="stat-value" id="totalDevices">0</div>
           <div class="stat-label">Total Devices</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">✅</div>
-          <div class="stat-value" id="onlineDevices">2</div>
+          <div class="stat-value" id="onlineDevices">0</div>
           <div class="stat-label">Online</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">📊</div>
-          <div class="stat-value" id="sensorCount">1</div>
+          <div class="stat-value" id="sensorCount">0</div>
           <div class="stat-label">Sensors</div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">⚡</div>
-          <div class="stat-value" id="automationCount">1</div>
+          <div class="stat-value" id="automationCount">0</div>
           <div class="stat-label">Automations</div>
         </div>
       </div>
@@ -349,7 +349,14 @@
               <div class="form-group">
                 <label class="form-label">GPIO Pin *</label>
                 <select id="actionGpio" class="form-select" required>
-                  ${[1,2,3,4,5,6,7,8].map(i => `<option value="${i}">GPIO ${i}</option>`).join('')}
+                  <option value="1">GPIO 1</option>
+                  <option value="2">GPIO 2</option>
+                  <option value="3">GPIO 3</option>
+                  <option value="4">GPIO 4</option>
+                  <option value="5">GPIO 5</option>
+                  <option value="6">GPIO 6</option>
+                  <option value="7">GPIO 7</option>
+                  <option value="8">GPIO 8</option>
                 </select>
               </div>
               <div class="form-group">
@@ -488,20 +495,293 @@ QoS Levels: 0, 1, 2 supported</pre>
         </div>
       </div>
       
-      <div class="card">
-        <h3 class="card-title">Example Client Code</h3>
+      <div class="card mb-lg">
+        <h3 class="card-title">💻 ESP32 Arduino Code Examples</h3>
         
-        <h4 style="margin: 1rem 0 0.5rem 0;">Python (paho-mqtt)</h4>
+        <h4 style="color: var(--primary); margin: 1rem 0 0.5rem 0;">📡 Connect to MQTT Broker</h4>
+        <pre>#include &lt;WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+const char* mqtt_server = "192.168.1.100";  // Your broker IP
+const int mqtt_port = 1883;
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Connect to WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("WiFi connected");
+  
+  // Setup MQTT
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(mqttCallback);
+  
+  // Connect to MQTT
+  reconnect();
+}
+
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Connecting to MQTT...");
+    String clientId = "ESP32-" + String(ESP.getEfuseMac(), HEX);
+    
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+      // Subscribe to GPIO commands
+      String topic = "device/" + clientId + "/gpio/set";
+      client.subscribe(topic.c_str());
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      delay(5000);
+    }
+  }
+}
+
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+}</pre>
+
+        <h4 style="color: var(--primary); margin: 1.5rem 0 0.5rem 0;">📤 Publish Sensor Data (Telemetry)</h4>
+        <pre>#include &lt;ArduinoJson.h&gt;
+#include &lt;DHT.h&gt;
+
+#define DHTPIN 4
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+
+void publishTelemetry() {
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+  
+  // Create JSON payload
+  StaticJsonDocument&lt;256&gt; doc;
+  doc["tC"] = temperature;
+  doc["rh"] = humidity;
+  doc["heap"] = ESP.getFreeHeap();
+  doc["rssi"] = WiFi.RSSI();
+  doc["uptime"] = millis() / 1000;
+  
+  String payload;
+  serializeJson(doc, payload);
+  
+  // Publish to telemetry topic
+  String deviceId = "ESP32-" + String(ESP.getEfuseMac(), HEX);
+  String topic = "device/" + deviceId + "/telemetry";
+  client.publish(topic.c_str(), payload.c_str());
+  
+  Serial.println("Telemetry sent: " + payload);
+}
+
+void setup() {
+  // ... WiFi and MQTT setup ...
+  dht.begin();
+}
+
+void loop() {
+  client.loop();
+  
+  // Send telemetry every 5 seconds
+  static unsigned long lastPublish = 0;
+  if (millis() - lastPublish > 5000) {
+    publishTelemetry();
+    lastPublish = millis();
+  }
+}</pre>
+
+        <h4 style="color: var(--primary); margin: 1.5rem 0 0.5rem 0;">📥 Receive GPIO Commands</h4>
+        <pre>#include &lt;ArduinoJson.h&gt;
+
+// Define GPIO pins
+#define GPIO1 5
+#define GPIO2 6
+#define GPIO3 7
+#define GPIO4 8
+
+void setup() {
+  // ... WiFi and MQTT setup ...
+  
+  // Configure GPIO pins as outputs
+  pinMode(GPIO1, OUTPUT);
+  pinMode(GPIO2, OUTPUT);
+  pinMode(GPIO3, OUTPUT);
+  pinMode(GPIO4, OUTPUT);
+}
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message received on topic: ");
+  Serial.println(topic);
+  
+  // Parse JSON payload
+  StaticJsonDocument&lt;256&gt; doc;
+  DeserializationError error = deserializeJson(doc, payload, length);
+  
+  if (error) {
+    Serial.println("JSON parsing failed!");
+    return;
+  }
+  
+  // Check if it's a GPIO command
+  if (doc.containsKey("type") && doc["type"] == "gpio") {
+    int pin = doc["pin"];
+    bool state = doc["state"];
+    
+    // Map GPIO number to actual pin
+    int actualPin;
+    switch(pin) {
+      case 1: actualPin = GPIO1; break;
+      case 2: actualPin = GPIO2; break;
+      case 3: actualPin = GPIO3; break;
+      case 4: actualPin = GPIO4; break;
+      default: 
+        Serial.println("Invalid GPIO pin!");
+        return;
+    }
+    
+    // Set GPIO state
+    digitalWrite(actualPin, state ? HIGH : LOW);
+    Serial.printf("GPIO %d set to %s\\n", pin, state ? "ON" : "OFF");
+  }
+}</pre>
+
+        <h4 style="color: var(--primary); margin: 1.5rem 0 0.5rem 0;">🔌 Complete Actuator Example</h4>
+        <pre>#include &lt;WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+#include &lt;ArduinoJson.h&gt;
+
+// WiFi credentials
+const char* ssid = "YOUR_WIFI";
+const char* password = "YOUR_PASSWORD";
+const char* mqtt_server = "192.168.1.100";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// GPIO Pins
+const int gpioPins[] = {5, 6, 7, 8, 9, 10, 21, 38};
+String deviceId;
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Initialize GPIOs
+  for (int i = 0; i < 8; i++) {
+    pinMode(gpioPins[i], OUTPUT);
+    digitalWrite(gpioPins[i], LOW);
+  }
+  
+  // Connect WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  deviceId = "ACTUATOR-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  
+  // Setup MQTT
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(mqttCallback);
+  reconnect();
+}
+
+void loop() {
+  if (!client.connected()) reconnect();
+  client.loop();
+  
+  // Publish status every 10 seconds
+  static unsigned long lastStatus = 0;
+  if (millis() - lastStatus > 10000) {
+    publishStatus();
+    lastStatus = millis();
+  }
+}
+
+void reconnect() {
+  while (!client.connected()) {
+    if (client.connect(deviceId.c_str())) {
+      String topic = "device/" + deviceId + "/gpio/set";
+      client.subscribe(topic.c_str());
+    } else {
+      delay(5000);
+    }
+  }
+}
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  StaticJsonDocument&lt;256&gt; doc;
+  deserializeJson(doc, payload, length);
+  
+  if (doc["type"] == "gpio") {
+    int pin = doc["pin"];
+    bool state = doc["state"];
+    
+    if (pin >= 1 && pin <= 8) {
+      digitalWrite(gpioPins[pin-1], state ? HIGH : LOW);
+    }
+  }
+}
+
+void publishStatus() {
+  StaticJsonDocument&lt;256&gt; doc;
+  doc["heap"] = ESP.getFreeHeap();
+  doc["rssi"] = WiFi.RSSI();
+  doc["uptime"] = millis() / 1000;
+  
+  String payload;
+  serializeJson(doc, payload);
+  client.publish(("device/" + deviceId + "/telemetry").c_str(), payload.c_str());
+}</pre>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">🐍 Python Client Example</h3>
+        
+        <h4 style="margin: 1rem 0 0.5rem 0;">Basic MQTT Client</h4>
         <pre>import paho.mqtt.client as mqtt
+import json
+
+def on_connect(client, userdata, flags, rc):
+    print(f"Connected with result code {rc}")
+    # Subscribe to all device telemetry
+    client.subscribe("device/+/telemetry")
+
+def on_message(client, userdata, msg):
+    print(f"Topic: {msg.topic}")
+    payload = json.loads(msg.payload.decode())
+    print(f"Data: {payload}")
 
 client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+
 client.connect("localhost", 1883, 60)
 
-# Subscribe to telemetry
-client.subscribe("devices/+/telemetry")
+# Control GPIO
+def control_gpio(device_id, gpio_pin, state):
+    topic = f"device/{device_id}/gpio/set"
+    payload = json.dumps({"type": "gpio", "pin": gpio_pin, "state": state})
+    client.publish(topic, payload)
 
-# Publish GPIO command
-client.publish("device/ESP32-IOT-ACTUATOR-4e5c/gpio/set", '{"gpio":1,"state":1}')
+# Example: Turn ON GPIO 1 on device
+control_gpio("ACTUATOR-4e5c", 1, True)
 
 client.loop_forever()</pre>
       </div>
@@ -646,6 +926,17 @@ client.loop_forever()</pre>
     </div>
   </div>
 
+  <!-- GPIO Control Modal -->
+  <div id="gpioModal" class="modal">
+    <div class="modal-content modal-gpio">
+      <div class="modal-header">
+        <h2 class="modal-title" id="gpioModalTitle">GPIO Control</h2>
+        <button class="modal-close" onclick="closeGPIOModal()">✕</button>
+      </div>
+      <div id="gpioModalContent" class="modal-body"></div>
+    </div>
+  </div>
+
   <!-- JavaScript Modules -->
   <script src="js/events.js"></script>
   <script src="js/mqtt.js"></script>
@@ -700,17 +991,25 @@ client.loop_forever()</pre>
             ` : ''}
             
             ${device.type === 'actuator' ? `
-              <div class="gpio-grid">
-                ${[1, 2, 3, 4].map(gpio => `
+              <div class="gpio-grid-compact">
+                ${[1, 2, 3].map(gpio => {
+                  const isOn = device.gpioStates && device.gpioStates[gpio];
+                  return `
                   <div class="gpio-item">
-                    <div class="gpio-label">GPIO ${gpio}</div>
-                    <div class="gpio-buttons">
-                      <button class="gpio-btn on" onclick="controlGPIO('${device.id}', ${gpio}, 1)">ON</button>
-                      <button class="gpio-btn off" onclick="controlGPIO('${device.id}', ${gpio}, 0)">OFF</button>
-                    </div>
+                    <span class="gpio-label">GPIO ${gpio}</span>
+                    <label class="gpio-switch">
+                      <input type="checkbox" ${isOn ? 'checked' : ''} 
+                             onchange="controlGPIO('${device.id}', ${gpio}, this.checked ? 1 : 0)">
+                      <span class="gpio-slider"></span>
+                    </label>
                   </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
+              <button class="btn btn-secondary" style="margin-top: 1rem; width: 100%;" 
+                      onclick="openGPIOModal('${device.id}')">
+                🎛️ Control More (8 GPIOs)
+              </button>
             ` : ''}
             
             <div class="device-footer">
@@ -733,6 +1032,52 @@ client.loop_forever()</pre>
         deviceCountEl.textContent = deviceArray.length;
       }
     }
+    
+    // GPIO Modal Functions
+    function openGPIOModal(deviceId) {
+      const device = getAllDevices().find(d => d.id === deviceId);
+      if (!device) return;
+      
+      const modal = document.getElementById('gpioModal');
+      const modalTitle = document.getElementById('gpioModalTitle');
+      const modalContent = document.getElementById('gpioModalContent');
+      
+      modalTitle.textContent = `${device.name} - GPIO Control`;
+      
+      modalContent.innerHTML = `
+        <div class="gpio-grid-full">
+          ${[1, 2, 3, 4, 5, 6, 7, 8].map(gpio => {
+            const isOn = device.gpioStates && device.gpioStates[gpio];
+            return `
+            <div class="gpio-item-modal">
+              <div class="gpio-label-modal">GPIO ${gpio}</div>
+              <label class="gpio-switch-modal">
+                <input type="checkbox" ${isOn ? 'checked' : ''} 
+                       onchange="controlGPIO('${device.id}', ${gpio}, this.checked ? 1 : 0)">
+                <span class="gpio-slider-modal"></span>
+              </label>
+              <div class="gpio-state-label">${isOn ? 'ON' : 'OFF'}</div>
+            </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      
+      modal.classList.add('active');
+    }
+    
+    function closeGPIOModal() {
+      const modal = document.getElementById('gpioModal');
+      modal.classList.remove('active');
+    }
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+      const modal = document.getElementById('gpioModal');
+      if (event.target === modal) {
+        closeGPIOModal();
+      }
+    });
     
     // Update dashboard grid periodically
     setInterval(updateDashboardGrid, 1000);
